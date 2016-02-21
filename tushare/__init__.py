@@ -1,4 +1,4 @@
-__version__ = '0.4.1'
+__version__ = '0.4.8'
 __author__ = 'Jimmy Liu'
 
 """
@@ -73,3 +73,6 @@ for DataYes Token
 from tushare.util.upass import (set_token, get_token)
 
 from tushare.datayes.api import *
+
+from tushare.internet.boxoffice import (realtime_boxoffice, day_boxoffice,
+                                        day_cinema, month_boxoffice)

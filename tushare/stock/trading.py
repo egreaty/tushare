@@ -123,7 +123,7 @@ def _parsing_dayprice_json(pageNum=1):
     df = pd.DataFrame(pd.read_json(js, dtype={'code':object}),
                       columns=ct.DAY_TRADING_COLUMNS)
     df = df.drop('symbol', axis=1)
-    df = df.ix[df.volume > 0]
+#     df = df.ix[df.volume > 0]
     return df
 
 
@@ -155,7 +155,7 @@ def get_tick_data(code=None, date=None, retry_count=3, pause=0.001):
                                 date, symbol))
             lines = urlopen(re, timeout=10).read()
             lines = lines.decode('GBK') 
-            if len(lines) < 100:
+            if len(lines) < 20:
                 return None
             df = pd.read_table(StringIO(lines), names=ct.TICK_COLUMNS,
                                skiprows=[0])      
@@ -166,7 +166,7 @@ def get_tick_data(code=None, date=None, retry_count=3, pause=0.001):
     raise IOError(ct.NETWORK_URL_ERROR_MSG)
 
 
-def get_sina_dd(code=None, date=None, retry_count=3, pause=0.001):
+def get_sina_dd(code=None, date=None, vol=400, retry_count=3, pause=0.001):
     """
         获取sina大单数据
     Parameters
@@ -187,11 +187,12 @@ def get_sina_dd(code=None, date=None, retry_count=3, pause=0.001):
     if code is None or len(code)!=6 or date is None:
         return None
     symbol = _code_to_symbol(code)
+    vol = vol*100
     for _ in range(retry_count):
         time.sleep(pause)
         try:
             re = Request(ct.SINA_DD % (ct.P_TYPE['http'], ct.DOMAINS['vsf'], ct.PAGES['sinadd'],
-                                symbol, date))
+                                symbol, vol, date))
             lines = urlopen(re, timeout=10).read()
             lines = lines.decode('GBK') 
             if len(lines) < 100:
@@ -243,7 +244,7 @@ def get_today_ticks(code=None, retry_count=3, pause=0.001):
             pages = len(data_str['detailPages'])
             data = pd.DataFrame()
             ct._write_head()
-            for pNo in range(1, pages):
+            for pNo in range(1, pages+1):
                 data = data.append(_today_ticks(symbol, date, pNo,
                                                 retry_count, pause), ignore_index=True)
         except Exception as er:
@@ -286,7 +287,7 @@ def get_today_all():
     return
     -------
       DataFrame
-           属性：代码，名称，涨跌幅，现价，开盘价，最高价，最低价，最日收盘价，成交量，换手率
+           属性：代码，名称，涨跌幅，现价，开盘价，最高价，最低价，最日收盘价，成交量，换手率，成交额，市盈率，市净率，总市值，流通市值
     """
     ct._write_head()
     df = _parsing_dayprice_json(1)
@@ -438,7 +439,8 @@ def get_h_data(code, start=None, end=None, autype='qfq',
             df = _parase_fq_factor(code, start, end)
             df = df.drop_duplicates('date')
             df = df.sort('date', ascending=False)
-            frow = df.head(1)
+            firstDate = data.head(1)['date']
+            frow = df[df.date == firstDate[0]]
             rt = get_realtime_quotes(code)
             if rt is None:
                 return None
@@ -565,7 +567,7 @@ def get_index():
     df['change'] = (df['close'] / df['preclose'] - 1 ) * 100
     df['amount'] = df['amount'] / 100000000
     df['change'] = df['change'].map(ct.FORMAT)
-    df['amount'] = df['amount'].map(ct.FORMAT)
+    df['amount'] = df['amount'].map(ct.FORMAT4)
     df = df[ct.INDEX_COLS]
     df['code'] = df['code'].map(lambda x:str(x).zfill(6))
     df['change'] = df['change'].astype(float)
